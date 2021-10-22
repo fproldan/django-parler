@@ -70,7 +70,6 @@ class TranslatableQuerySet(QuerySet):
             and isinstance(self._result_cache[0], models.Model)
         ):
             for obj in self._result_cache:
-                self.load_translations(obj)
                 obj.set_current_language(self._language)
 
     def _extract_model_params(self, defaults, **kwargs):
