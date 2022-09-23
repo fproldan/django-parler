@@ -1,4 +1,3 @@
-# encoding: utf-8
 """
 These widgets perform sorting on the choices within Python.
 This is useful when sorting is hard to due translated fields, for example:
@@ -23,19 +22,19 @@ Use them like any regular form widget::
 
 """
 import copy
+
 from django import forms
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.utils.text import slugify
 
 __all__ = (
-    'SortedSelect',
-    'SortedSelectMultiple',
-    'SortedCheckboxSelectMultiple',
+    "SortedSelect",
+    "SortedSelectMultiple",
+    "SortedCheckboxSelectMultiple",
 )
 
 
 class SortedChoiceIterator:
-
     def __init__(self, field):
         self.field = field
 
@@ -54,7 +53,7 @@ class SortedSelectMixin:
 
     def __init__(self, attrs=None, choices=()):
         super().__init__(attrs, choices=())
-        self._choices = choices   # super may set self.choices=()
+        self._choices = choices  # super may set self.choices=()
         self._sorted = False
 
     @property
@@ -102,13 +101,14 @@ def _choicesorter(choice):
     else:
         # Lowercase to have case insensitive sorting.
         # For country list, normalize the strings (e.g. Österreich / Oman)
-        return slugify(force_text(choice[1]))
+        return slugify(force_str(choice[1]))
 
 
 class SortedSelect(SortedSelectMixin, forms.Select):
     """
     A select box which sorts it's options.
     """
+
     pass
 
 
@@ -116,6 +116,7 @@ class SortedSelectMultiple(SortedSelectMixin, forms.SelectMultiple):
     """
     A multiple-select box which sorts it's options.
     """
+
     pass
 
 
@@ -123,4 +124,5 @@ class SortedCheckboxSelectMultiple(SortedSelectMixin, forms.CheckboxSelectMultip
     """
     A checkbox group with sorted choices.
     """
+
     pass

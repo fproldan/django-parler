@@ -3,10 +3,12 @@ import datetime as dt
 from django.core.cache import cache
 from django.utils import translation
 from django.utils.timezone import now
-from parler import appsettings
 
+from parler import appsettings
+from parler.cache import get_translation_cache_key
+
+from .testapp.models import DateTimeModel, SimpleModel
 from .utils import AppTestCase, override_parler_settings
-from .testapp.models import SimpleModel, DateTimeModel
 
 
 class QueryCountTests(AppTestCase):
@@ -19,26 +21,26 @@ class QueryCountTests(AppTestCase):
         super().setUpClass()
 
         cls.country_list = (
-            'Mexico',
-            'Monaco',
-            'Morocco',
-            'Netherlands',
-            'Norway',
-            'Poland',
-            'Portugal',
-            'Romania',
-            'Russia',
-            'South Africa',
+            "Mexico",
+            "Monaco",
+            "Morocco",
+            "Netherlands",
+            "Norway",
+            "Poland",
+            "Portugal",
+            "Romania",
+            "Russia",
+            "South Africa",
         )
 
         for country in cls.country_list:
             SimpleModel.objects.create(_current_language=cls.conf_fallback, tr_title=country)
 
+        DateTimeModel.objects.create(
+            _current_language=cls.conf_fallback, tr_title=country, datetime=now()
+        )
 
-        DateTimeModel.objects.create(_current_language=cls.conf_fallback,
-                                     tr_title=country, datetime=now())
-
-    #def setUp(self):
+    # def setUp(self):
     #    cache.clear()
 
     def assertNumTranslatedQueries(self, num, qs, language_code=None):
@@ -70,21 +72,20 @@ class QueryCountTests(AppTestCase):
         """
         # We have at least one object created in setUpClass.
         obj = DateTimeModel.objects.all()[0]
-        self.assertEqual(
-            obj,
-            DateTimeModel.objects.language(self.conf_fallback).all()[0])
+        self.assertEqual(obj, DateTimeModel.objects.language(self.conf_fallback).all()[0])
         # Test iteration through QuerySet of non-model objects.
         self.assertIsInstance(
-            DateTimeModel.objects.language(self.conf_fallback).dates(
-                'datetime', 'day')[0],
-            dt.date)
+            DateTimeModel.objects.language(self.conf_fallback).dates("datetime", "day")[0], dt.date
+        )
 
     def test_prefetch_queries(self):
         """
         Test that .prefetch_related() works
         """
         with override_parler_settings(PARLER_ENABLE_CACHING=False):
-            self.assertNumTranslatedQueries(2, SimpleModel.objects.prefetch_related('translations'))
+            self.assertNumTranslatedQueries(
+                2, SimpleModel.objects.prefetch_related("translations")
+            )
 
     def test_model_cache_queries(self):
         """
@@ -95,8 +96,32 @@ class QueryCountTests(AppTestCase):
         with override_parler_settings(PARLER_ENABLE_CACHING=False):
             qs = SimpleModel.objects.all()
             self.assertNumTranslatedQueries(1 + len(self.country_list), qs)
-            self.assertNumTranslatedQueries(0, qs)   # All should be cached on the QuerySet and object now.
+            self.assertNumTranslatedQueries(
+                0, qs
+            )  # All should be cached on the QuerySet and object now.
 
-            qs = SimpleModel.objects.prefetch_related('translations')
+            qs = SimpleModel.objects.prefetch_related("translations")
             self.assertNumTranslatedQueries(2, qs)
-            self.assertNumTranslatedQueries(0, qs)   # All should be cached on the QuerySet and object now.
+            self.assertNumTranslatedQueries(
+                0, qs
+            )  # All should be cached on the QuerySet and object now.
+
+    def test_get_translation_cache_key_empty_prefix(self):
+        """
+        Test that ``get_translation_cache_key`` creates correct cache key if prefix is empty.
+        """
+        with override_parler_settings(PARLER_CACHE_PREFIX=""):
+            model = SimpleModel.objects.first()
+            field = model.translations.first()
+            key = get_translation_cache_key(field.__class__, 1, "en")
+        self.assertEqual(key, "parler.testapp.SimpleModelTranslation.1.en")
+
+    def test_get_translation_cache_key_with_prefix(self):
+        """
+        Test that ``get_translation_cache_key`` creates correct cache key if prefix is set.
+        """
+        with override_parler_settings(PARLER_CACHE_PREFIX="mysite"):
+            model = SimpleModel.objects.first()
+            field = model.translations.first()
+            key = get_translation_cache_key(field.__class__, 1, "en")
+        self.assertEqual(key, "mysite.parler.testapp.SimpleModelTranslation.1.en")
